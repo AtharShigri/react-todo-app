@@ -7,12 +7,37 @@ function App() {
   });
 
   const [input, setInput] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [editIndex, setEditIndex] = useState(null);
+
+  const isFutureDateTime = (d, t) => {
+    const taskDateTime = new Date(`${d}T${t}`);
+    return taskDateTime > new Date();
+  };
 
   const addTask = () => {
-    if (input.trim() === '') return;
-    const updatedTasks = [...tasks, input];
+    if (input.trim() === '' || date.trim() === '' || time.trim() === '') return;
+    if (!isFutureDateTime(date, time)) {
+      alert("Please select a future date and time.");
+      return;
+    }
+    const newTask = { text: input, date, time };
+
+    let updatedTasks;
+    if (editIndex !== null) {
+      updatedTasks = [...tasks];
+      updatedTasks[editIndex] = newTask;
+      setEditIndex(null);
+    } else {
+      updatedTasks = [...tasks, newTask];
+    }
+
+    updatedTasks.sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
     setTasks(updatedTasks);
     setInput('');
+    setDate('');
+    setTime('');
   };
 
   const deleteTask = (index) => {
@@ -20,7 +45,18 @@ function App() {
     setTasks(updatedTasks);
   };
 
-  // Save tasks to localStorage whenever they change
+  const editTask = (index) => {
+    const task = tasks[index];
+    setInput(task.text);
+    setDate(task.date);
+    setTime(task.time);
+    setEditIndex(index);
+  };
+
+  const isLate = (taskDate, taskTime) => {
+    return new Date(`${taskDate}T${taskTime}`) < new Date();
+  };
+
   useEffect(() => {
     localStorage.setItem('tasks', JSON.stringify(tasks));
   }, [tasks]);
@@ -35,13 +71,32 @@ function App() {
         onChange={(e) => setInput(e.target.value)}
         style={styles.input}
       />
-      <button onClick={addTask} style={styles.button}>Add</button>
+      <input
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        style={styles.input}
+      />
+      <input
+        type="time"
+        value={time}
+        onChange={(e) => setTime(e.target.value)}
+        style={styles.input}
+      />
+      <button onClick={addTask} style={styles.button}>{editIndex !== null ? 'Update' : 'Add'}</button>
 
       <ul style={styles.list}>
         {tasks.map((task, index) => (
           <li key={index} style={styles.listItem}>
-            {task}
-            <button onClick={() => deleteTask(index)} style={styles.deleteBtn}> Delete </button>
+            <div>
+              <strong>{task.text}</strong><br />
+              <small>{task.date} at {task.time}</small><br />
+              {isLate(task.date, task.time) && <span style={{ color: 'red' }}>Late</span>}
+            </div>
+            <div>
+              <button onClick={() => editTask(index)} style={styles.editBtn}>Edit</button>
+              <button onClick={() => deleteTask(index)} style={styles.deleteBtn}>Delete</button>
+            </div>
           </li>
         ))}
       </ul>
@@ -51,12 +106,13 @@ function App() {
 
 const styles = {
   container: { padding: 20, textAlign: 'center' },
-  input: { padding: 10, width: '60%', marginRight: 10 },
+  input: { padding: 10, width: '20%', marginRight: 10, marginBottom: 10 },
   button: { padding: '10px 20px', background: '#4CAF50', color: 'white', border: 'none' },
   list: { listStyle: 'none', padding: 0, marginTop: 20 },
   listItem: {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'center',
     margin: '5px auto',
     padding: '10px 20px',
     width: '60%',
@@ -66,6 +122,14 @@ const styles = {
   deleteBtn: {
     background: 'red',
     color: 'white',
+    border: 'none',
+    padding: '5px 10px',
+    cursor: 'pointer',
+    marginLeft: '5px'
+  },
+  editBtn: {
+    background: '#ffcc00',
+    color: 'black',
     border: 'none',
     padding: '5px 10px',
     cursor: 'pointer'
